@@ -42,9 +42,10 @@ def main() -> None:
         print("비밀번호가 비어 있어요.")
         sys.exit(1)
 
-    lines = [f"admin_password = {q(pw)}", f"sheet_id = {q(sheet_id)}", "", "[gcp_service_account]"]
-    lines += [f"{k} = {q(v)}" for k, v in key.items()]
-    text = "\n".join(lines) + "\n"
+    import base64
+
+    b64 = base64.b64encode(json.dumps(key, separators=(",", ":")).encode()).decode()
+    text = f"admin_password = {q(pw)}\nsheet_id = {q(sheet_id)}\ngcp_key_b64 = {q(b64)}\n"
 
     out = Path(__file__).parent / ".streamlit" / "secrets.toml"
     out.parent.mkdir(exist_ok=True)

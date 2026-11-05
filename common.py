@@ -84,9 +84,23 @@ def new_id() -> str:
 
 def using_sheets() -> bool:
     try:
-        return "gcp_service_account" in st.secrets and "sheet_id" in st.secrets
+        has_key = "gcp_key_b64" in st.secrets or "gcp_service_account" in st.secrets
+        return has_key and "sheet_id" in st.secrets
     except Exception:
         return False
+
+
+def _service_account_info() -> dict:
+    """Key from `gcp_key_b64` (whole JSON key, base64, one line) or the `[gcp_service_account]` table."""
+    if "gcp_key_b64" in st.secrets:
+        import base64
+        import json
+
+        raw = "".join(str(st.secrets["gcp_key_b64"]).split())
+        return json.loads(base64.b64decode(raw).decode("utf-8"))
+    info = {k: v for k, v in st.secrets["gcp_service_account"].items()}
+    print(f"[secrets] gcp_service_account fields: {sorted(info)}", flush=True)
+    return info
 
 
 def _clean_private_key(pk: str) -> str:
@@ -112,7 +126,7 @@ def _clean_private_key(pk: str) -> str:
 def _worksheet():
     import gspread
 
-    info = {k: v for k, v in st.secrets["gcp_service_account"].items()}
+    info = _service_account_info()
     info["private_key"] = _clean_private_key(str(info.get("private_key", "")))
     gc = gspread.service_account_from_dict(info)
     sh = gc.open_by_key(st.secrets["sheet_id"])
