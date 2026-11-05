@@ -76,10 +76,10 @@ if not c.using_sheets():
 with st.form("answer", clear_on_submit=False, border=False):
     # ---- 01 일정 ----
     st.markdown('<div class="sa-sec"><b>01</b>일정 확인</div>', unsafe_allow_html=True)
-    st.caption("2026년 11월 가능 일정 중 촬영 가능한 날짜를 체크하고, 시작·종료 시간을 입력해주세요.")
+    st.caption("2026년 11월 가능 일정 중 촬영 가능한 날짜에만 시작·종료 시간을 입력해주세요. 안 되는 날짜는 비워두면 됩니다.")
     for d, w in c.CANDIDATES:
         with st.container(border=True):
-            st.checkbox(f"11월 {d}일 ({w})", key=f"f_d{d}_on")
+            st.markdown(f'<span class="sa-date">11월 {d}일 ({w})</span>', unsafe_allow_html=True)
             a, b = st.columns(2)
             a.time_input("시작 시간", key=f"f_d{d}_start", step=1800)
             b.time_input("종료 시간", key=f"f_d{d}_end", step=1800)
@@ -119,9 +119,9 @@ if submitted:
     record: dict = {}
     for d, w in c.CANDIDATES:
         s, e = ss[f"f_d{d}_start"], ss[f"f_d{d}_end"]
-        if ss[f"f_d{d}_on"]:
+        if s or e:
             if not s or not e:
-                errors.append(f"11월 {d}일({w}): 시작·종료 시간을 모두 입력해주세요.")
+                errors.append(f"11월 {d}일({w}): 시작·종료 시간을 모두 입력하거나, 안 되는 날이면 둘 다 비워주세요.")
             elif e <= s:
                 errors.append(f"11월 {d}일({w}): 종료 시간은 시작 시간보다 늦어야 해요.")
             else:
@@ -152,8 +152,15 @@ if submitted:
         )
         try:
             c.upsert(record)
-        except Exception:
-            st.error("제출하지 못했어요. 잠시 뒤 다시 눌러주세요. 계속 안 되면 아래 내용을 복사해 전달해주세요.")
+        except Exception as exc:  # noqa: BLE001
+            import traceback
+
+            print("SUBMIT FAILED:", type(exc).__name__, str(exc)[:500], flush=True)
+            traceback.print_exc()
+            st.error(
+                "제출하지 못했어요. 잠시 뒤 다시 눌러주세요. 계속 안 되면 아래 내용을 복사해 전달해주세요."
+                f" (오류 코드: {type(exc).__name__})"
+            )
             st.code(c.to_text(record), language=None)
         else:
             ss["rid"], ss["prev"] = rid, record

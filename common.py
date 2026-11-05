@@ -144,12 +144,23 @@ def upsert(record: dict) -> None:
     """Insert or replace a response by its id (keeps status/memo unless given)."""
     values = [str(record.get(k, "")) for k in KEYS]
     if using_sheets():
-        ws = _worksheet()
-        cell = ws.find(record["id"], in_column=1)
-        if cell:
-            ws.update(range_name=f"A{cell.row}", values=[values])
-        else:
-            ws.append_row(values, value_input_option="RAW")
+        def _write():
+            ws = _worksheet()
+            cell = ws.find(record["id"], in_column=1)
+            if cell:
+                ws.update(range_name=f"A{cell.row}", values=[values], value_input_option="RAW")
+            else:
+                ws.append_row(values, value_input_option="RAW", table_range="A1")
+
+        try:
+            _write()
+        except Exception:
+            # Transient Google API hiccup or a stale cached connection: reconnect and retry once
+            import time
+
+            _worksheet.clear()
+            time.sleep(1.5)
+            _write()
         return
     rows = load_all()
     for i, r in enumerate(rows):
