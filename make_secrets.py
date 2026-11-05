@@ -21,10 +21,14 @@ def q(v) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("서비스 계정 JSON 키 파일 경로를 함께 적어주세요. 예: python make_secrets.py C:\\Users\\me\\Downloads\\key.json")
+    if len(sys.argv) >= 2:
+        raw = sys.argv[1]
+    else:
+        raw = input("서비스 계정 키(.json) 파일을 이 창에 끌어다 놓고 Enter: ")
+    key_path = Path(raw.strip().strip("'\"").lstrip("& ").strip("'\""))
+    if not key_path.is_file():
+        print(f"파일을 찾지 못했어요: {key_path}")
         sys.exit(1)
-    key_path = Path(sys.argv[1].strip('"'))
     key = json.loads(key_path.read_text(encoding="utf-8"))
     if key.get("type") != "service_account":
         print("서비스 계정 키(JSON)가 아닌 것 같아요. 다시 확인해주세요.")
