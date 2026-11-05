@@ -1,0 +1,22 @@
+name: Keep app awake
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"   # every 4 hours (Streamlit sleeps apps after ~12h without visitors)
+  workflow_dispatch:
+
+permissions:
+  actions: write   # lets the keepalive step stop GitHub from disabling this schedule after 60 idle days
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - run: python scripts/wake.py
+      - uses: liskin/gh-workflow-keepalive@v1

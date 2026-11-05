@@ -89,11 +89,32 @@ def using_sheets() -> bool:
         return False
 
 
+def _clean_private_key(pk: str) -> str:
+    """Repair common copy-paste damage to a PEM key (escaped newlines, stray quotes/spaces)."""
+    import re
+
+    pk = pk.strip().strip('"').strip("'")
+    pk = pk.replace("\\r", "").replace("\r", "").replace("\\n", "\n")
+    head, tail = "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"
+    if head in pk and tail in pk:
+        body = pk.split(head, 1)[1].split(tail, 1)[0]
+        body = re.sub(r"\s+", "", body)
+        lines = [body[i:i + 64] for i in range(0, len(body), 64)]
+        pk = head + "\n" + "\n".join(lines) + "\n" + tail + "\n"
+    print(
+        f"[secrets] private_key chars={len(pk)} has_begin={head in pk} has_end={tail in pk} lines={pk.count(chr(10))}",
+        flush=True,
+    )
+    return pk
+
+
 @st.cache_resource(show_spinner=False)
 def _worksheet():
     import gspread
 
-    gc = gspread.service_account_from_dict(dict(st.secrets["gcp_service_account"]))
+    info = {k: v for k, v in st.secrets["gcp_service_account"].items()}
+    info["private_key"] = _clean_private_key(str(info.get("private_key", "")))
+    gc = gspread.service_account_from_dict(info)
     sh = gc.open_by_key(st.secrets["sheet_id"])
     try:
         ws = sh.worksheet(SHEET_NAME)
